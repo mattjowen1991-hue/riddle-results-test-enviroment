@@ -40,10 +40,12 @@
       </div>
       <div class="flex items-center gap-3">
         <span class="inline-flex items-center gap-2 text-sm bg-white/70 backdrop-blur px-3 py-2 rounded-xl ring-theme">
-          <span>Season</span>
-          <select id="seasonSelect" class="bg-transparent outline-none font-semibold"></select>
-        </span>
-        <a id="repoLink" class="text-sm underline opacity-80 hover:opacity-100" target="_blank" rel="noreferrer">View on GitHub</a>
+  <span>Season</span>
+  <select id="seasonSelect" class="bg-transparent outline-none font-semibold"></select>
+</span>
+<button id="rulesBtn" class="text-sm bg-white/70 backdrop-blur px-3 py-2 rounded-xl hover:shadow-sm">Rules</button>
+<a id="repoLink" class="text-sm underline opacity-80 hover:opacity-100" target="_blank" rel="noreferrer">View on GitHub</a>
+
       </div>
     </div>
   </header>
@@ -77,6 +79,25 @@
         
       </aside>
     </section>
+
+    <div id="rulesModal" class="fixed inset-0 hidden flex items-center justify-center bg-black/50 z-50">
+  <div class="bg-white max-w-2xl w-[92vw] rounded-2xl p-6 sm:p-8 relative">
+    <button id="rulesClose" class="absolute top-3 right-3 text-xl leading-none px-2">×</button>
+    <h3 class="riddle-title text-2xl font-extrabold mb-2">League Rules</h3>
+    <p class="text-sm opacity-80 mb-4">Quick guide to how we play.</p>
+    <ol class="list-decimal pl-5 space-y-2 text-sm leading-6">
+      <li><b>Daily riddles.</b> Each workday, Matt posts a riddle in <code>#cx-emea-team</code>. Reply in the thread with your answer.</li>
+      <li><b>Reveal & scoring.</b> At the end of the shift, Matt reveals the solution and marks solvers. Every correct solver earns <b>1 point</b>.</li>
+      <li><b>Tabs.</b> <b>Daily</b> shows today’s points (and your 🔥 daily streak). <b>Weekly</b> totals the last 7 days. <b>All Time</b> totals everything in the selected season (or All).</li>
+      <li><b>Streaks (🔥).</b> Count of consecutive days you’ve scored at least one point. Miss a day and it resets.</li>
+      <li><b>Seasons & crowns (👑).</b> Seasons are 4-week blocks starting from the first riddle of the season. At season end, the top scorer(s) receive a crown.</li>
+    </ol>
+    <div class="mt-6 text-right">
+      <button id="rulesOk" class="px-4 py-2 rounded-lg bg-slate-900 text-white">Got it</button>
+    </div>
+  </div>
+</div>
+
   </main>
 
   <footer class="relative max-w-6xl mx-auto px-4 sm:px-6 pb-24 pr-32 text-center text-xs opacity-70">
@@ -84,188 +105,230 @@
   <img id="mascotFooter" alt="" class="footer-mascot" /></footer>
 
   <script>
-    // --- Simple data layer ---------------------------------------------------
-    const GH_REPO = window.location.host ? '' : ''; // leave blank; we infer relative files
-    const paths = {
-      players: GH_REPO + 'players.json',
-      rounds:  GH_REPO + 'rounds.json',
-      config:  GH_REPO + 'config.json'
-    };
+  // ---------- Data helpers ----------
+  const paths = { players: 'players.json', rounds: 'rounds.json', config: 'config.json' };
+  const fmt = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' });
 
-    const fmt = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' });
+  async function loadJSON(url){
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`Failed to load ${url} (${res.status})`);
+    try { return await res.json(); }
+    catch (e) { throw new Error(`Invalid JSON in ${url}: ${e.message}`); }
+  }
 
-    async function loadJSON(url){
-      const res = await fetch(url, { cache: 'no-store' });
-      if(!res.ok) throw new Error(`Failed to load ${url} (${res.status})`);
-      try { return await res.json(); } catch(e){ throw new Error(`Invalid JSON in ${url}: ${e.message}`); }
+  function computeTotals(players, rounds, season){
+    const filtered = season ? rounds.filter(r => r.season === season) : rounds;
+    const totals = players.map(p => ({
+      id: p.id, name: p.name, avatar: p.avatar, team: p.team || '',
+      total: 0, last7: 0, today: 0, streak: 0, crowns: p.crowns || 0
+    }));
+    const idx = Object.fromEntries(totals.map(t => [t.id, t]));
+    const dates = [...new Set(filtered.map(r => r.date))].sort();
+    const today = dates[dates.length - 1] || null;
+    const last7set = new Set(dates.slice(-7));
+    const perDay = {};
+
+    filtered.forEach(r => {
+      perDay[r.date] = r.scores || {};
+      for (const [pid, pts] of Object.entries(r.scores || {})){
+        const t = idx[pid]; if (!t) continue;
+        t.total += pts;
+        if (last7set.has(r.date)) t.last7 += pts;
+        if (today && r.date === today) t.today += pts;
+      }
     });
-      if(!res.ok) throw new Error('Failed to load '+url);
-      return res.json();
-    }
 
-    function sum(arr){ return arr.reduce((a,b)=>a+b,0); }
+    // daily streak (consecutive days with >0, ending today)
+    totals.forEach(t => {
+      let s = 0;
+      for (let i = dates.length - 1; i >= 0; i--){
+        const d = dates[i];
+        const pts = (perDay[d] && perDay[d][t.id]) || 0;
+        if (pts > 0) s++; else break;
+      }
+      t.streak = s;
+    });
 
-    function computeTotals(players, rounds, season){
-      // filter by season if given
-      const filteredRounds = season ? rounds.filter(r => r.season === season) : rounds;
-      const dayIndex = {}; // yyyy-mm-dd => per-player points
-      filteredRounds.forEach(r => dayIndex[r.date] = r.scores);
+    return { totals, today };
+  }
 
-      const totals = players.map(p => ({
-        id: p.id, name: p.name, avatar: p.avatar, team: p.team || '',
-        total: 0, last7: 0, today: 0, streak: 0, crowns: p.crowns || 0
-      }));
+  function medal(i){
+    return [
+      {name:'Champion', emoji:'🥇', color:'from-yellow-200 to-yellow-400'},
+      {name:'Runner-up', emoji:'🥈', color:'from-gray-200 to-gray-400'},
+      {name:'Third',     emoji:'🥉', color:'from-amber-200 to-amber-400'}
+    ][i] || null;
+  }
 
-      const idx = Object.fromEntries(totals.map(t => [t.id, t]));
+  // one-number card, with 🔥 only on Daily and 👑 always visible
+  function playerCard(p, rank, view){
+    const m = medal(rank);
+    const label = view==='today' ? 'Daily' : view==='last7' ? 'Weekly' : 'All Time';
+    const value = view==='today' ? p.today : view==='last7' ? p.last7 : p.total;
+    const showFire = view==='today';
 
-      const dates = [...new Set(filteredRounds.map(r=>r.date))].sort();
-      const today = dates[dates.length-1];
-      const last7 = new Set(dates.slice(-7));
+    return `
+      <article class="relative bg-white/80 backdrop-blur rounded-2xl p-5 border border-black/5 hover:translate-y-[-2px] transition">
+        ${m ? `<div class="absolute -top-4 -right-3 bg-gradient-to-b ${m.color} text-xl rounded-full w-12 h-12 grid place-items-center" title="${m.name}">${m.emoji}</div>`:''}
+        <div class="flex items-center gap-4">
+          <img src="${p.avatar || 'img/players/_placeholder.png'}" alt="${p.name}"
+               class="avatar w-14 h-14 rounded-2xl object-cover"
+               onerror="this.onerror=null;this.src='img/players/_placeholder.png'"/>
+          <div class="flex-1 min-w-0">
+            <h4 class="font-extrabold text-lg truncate">${p.name}</h4>
+            <div class="mt-1 flex flex-wrap gap-2 text-xs">
+              ${showFire ? `<span class="inline-flex items-center gap-1 bg-black/5 px-2 py-1 rounded-lg" title="Daily win streak (resets when you miss a day)">🔥 ${p.streak}</span>` : ''}
+              <span class="inline-flex items-center gap-1 bg-black/5 px-2 py-1 rounded-lg" title="Season crowns (awarded to top scorer each 4-week season)">👑 ${p.crowns || 0}</span>
+            </div>
+          </div>
+        </div>
+        <div class="mt-4 grid grid-cols-1 gap-2 text-center">
+          <div class="rounded-xl bg-sky-50 py-3">
+            <div class="text-xs opacity-70">${label}</div>
+            <div class="text-2xl font-extrabold">${value}</div>
+          </div>
+        </div>
+      </article>`;
+  }
 
-      filteredRounds.forEach(r => {
-        for(const [pid, pts] of Object.entries(r.scores)){
-          const t = idx[pid]; if(!t) continue;
-          t.total += pts;
-          if(last7.has(r.date)) t.last7 += pts;
-          if(r.date === today) t.today += pts;
-        }
+  function renderLeaderboard(totals, view){
+    const key = view==='last7' ? 'last7' : view==='today' ? 'today' : 'total';
+    const sorted = [...totals].sort((a,b)=>{
+      if (b[key] !== a[key]) return b[key] - a[key];
+      if (b.streak !== a.streak) return b.streak - a.streak;
+      return a.name.localeCompare(b.name);
+    });
+    document.getElementById('leaderboard').innerHTML =
+      sorted.map((p,i)=>playerCard(p,i,view)).join('');
+  }
+
+  function renderRecentRounds(rounds, playersById){
+    const list = document.getElementById('recentRounds');
+    const last = rounds.slice(-10).reverse();
+    list.innerHTML = last.map(r=>{
+      const entries = Object.entries(r.scores || {})
+        .filter(([,pts])=>pts>0)
+        .sort((a,b)=>b[1]-a[1])
+        .map(([pid,pts])=>{
+          const name = (playersById[pid] && playersById[pid].name) || pid;
+          return `<span class="inline-flex items-center gap-1 bg-black/5 rounded-lg px-2 py-1">${name}<b>+${pts}</b></span>`;
+        }).join(' ');
+      const title = r.title || 'Riddle';
+      return `<li class="bg-white/80 rounded-2xl p-4 border border-black/5">
+        <div class="flex items-center justify-between">
+          <div class="font-semibold">${fmt.format(new Date(r.date))} · ${title}</div>
+          ${r.link ? `<a href="${r.link}" target="_blank" class="text-sm underline">See riddle</a>`:''}
+        </div>
+        <div class="mt-3 text-sm flex flex-wrap gap-2">${entries || '<span class="opacity-60">No solves recorded</span>'}</div>
+      </li>`;
+    }).join('');
+  }
+
+  function renderHallOfFame(players){
+    const hof = [...players].sort((a,b)=> (b.crowns||0)-(a.crowns||0)).slice(0,5);
+    const list = document.getElementById('hallOfFame');
+    list.innerHTML = hof.map(p=>`
+      <li class="flex items-center gap-3">
+        <img src="${p.avatar || 'img/players/_placeholder.png'}" alt="${p.name}"
+             class="w-8 h-8 rounded-xl object-cover"
+             onerror="this.onerror=null;this.src='img/players/_placeholder.png'"/>
+        <span class="text-sm">${p.name}</span>
+        <span class="ml-auto text-sm">👑 ${p.crowns||0}</span>
+      </li>
+    `).join('');
+  }
+
+  function setupTabs(totals){
+    const tabs = document.querySelectorAll('.tab-btn');
+    tabs.forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        tabs.forEach(x=>x.setAttribute('aria-selected','false'));
+        btn.setAttribute('aria-selected','true');
+        renderLeaderboard(totals, btn.dataset.view);
       });
+    });
+  }
 
-      // streak: consecutive days with >0 ending today
-      for(const t of totals){
-        let s = 0;
-        for(let i=dates.length-1;i>=0;i--){
-          const d = dates[i];
-          const pts = dayIndex[d]?.[t.id] || 0;
-          if(pts>0) s++; else break;
+  function setupSeasons(rounds){
+    const seasons = [...new Set(rounds.map(r=>r.season))].filter(Boolean).sort();
+    const sel = document.getElementById('seasonSelect');
+    sel.innerHTML = ['All', ...seasons].map(s=>`<option value="${s==='All'?'':s}">${s}</option>`).join('');
+    return sel;
+  }
+
+  // ---------- Boot ----------
+  (async () => {
+    try{
+      const [players, rounds, config] = await Promise.all([
+        loadJSON(paths.players),
+        loadJSON(paths.rounds),
+        loadJSON(paths.config).catch(()=>({}))
+      ]);
+
+      // repo link
+      const repoLink = document.getElementById('repoLink');
+      if (repoLink) repoLink.href = config.repoUrl || '#';
+
+      // footer mascot (hide until loaded)
+      const mascotFooter = document.getElementById('mascotFooter');
+      if (mascotFooter){
+        mascotFooter.addEventListener('load',  ()=>{ mascotFooter.style.display='block'; });
+        mascotFooter.addEventListener('error', ()=>{ mascotFooter.remove(); });
+        mascotFooter.src = (config.mascotUrl || 'img/mascot.png');
+        if (config.mascotAlt) mascotFooter.alt = config.mascotAlt;
+        const footer = document.querySelector('footer');
+        if (footer && typeof config.mascotSize === 'number'){
+          footer.style.setProperty('--mascot-size', `${config.mascotSize}px`);
         }
-        t.streak = s;
+        if (config.mascotPosition === 'left'){
+          mascotFooter.style.left = '1rem';
+          mascotFooter.style.right = 'auto';
+        } else {
+          mascotFooter.style.right = '1rem';
+          mascotFooter.style.left = 'auto';
+        }
       }
 
-      return { totals, today };
-    }
+      const playersById = Object.fromEntries(players.map(p=>[p.id,p]));
+      const seasonSel = setupSeasons(rounds);
 
-    function medal(i){
-      return [
-        {name:'Champion', emoji:'🥇', color:'from-yellow-200 to-yellow-400'},
-        {name:'Runner-up', emoji:'🥈', color:'from-gray-200 to-gray-400'},
-        {name:'Third', emoji:'🥉', color:'from-amber-200 to-amber-400'}
-      ][i] || null;
-    }
-
-    function playerCard(p, rank){
-      const m = medal(rank);
-      return `
-        <article class="relative bg-white/80 backdrop-blur rounded-2xl p-5 border border-black/5 hover:translate-y-[-2px] transition">
-          ${m ? `<div class="absolute -top-4 -right-3 medal bg-gradient-to-b ${m.color} text-xl rounded-full w-12 h-12 grid place-items-center" title="${m.name}">${m.emoji}</div>`:''}
-          <div class="flex items-center gap-4">
-            <img src="${p.avatar || 'img/players/_placeholder.png'}" alt="${p.name}" class="avatar w-14 h-14 rounded-2xl object-cover" onerror="this.onerror=null;this.src='img/players/_placeholder.png'"/>
-            <div class="flex-1 min-w-0">
-              <h4 class="font-extrabold text-lg truncate">${p.name}</h4>
-              <div class="mt-1 flex flex-wrap gap-2 text-xs">
-                <span class="inline-flex items-center gap-1 bg-black/5 px-2 py-1 rounded-lg" title="Streak">🔥 ${p.streak}</span>
-                <span class="inline-flex items-center gap-1 bg-black/5 px-2 py-1 rounded-lg" title="Crowns">👑 ${p.crowns || 0}</span>
-              </div>
-            </div>
-          </div>
-          <div class="mt-4 grid grid-cols-3 gap-2 text-center">
-            <div class="rounded-xl bg-sky-50 py-2">
-              <div class="text-xs opacity-70">Overall</div>
-              <div class="text-xl font-extrabold">${p.total}</div>
-            </div>
-            <div class="rounded-xl bg-sky-50 py-2">
-              <div class="text-xs opacity-70">Last 7</div>
-              <div class="text-xl font-extrabold">${p.last7}</div>
-            </div>
-            <div class="rounded-xl bg-sky-50 py-2">
-              <div class="text-xs opacity-70">Today</div>
-              <div class="text-xl font-extrabold">${p.today}</div>
-            </div>
-          </div>
-        </article>`;
-    }
-
-    function renderLeaderboard(totals, view){
-      const sorted = [...totals].sort((a,b)=>{
-        const key = view==='last7' ? 'last7' : view==='today' ? 'today' : 'total';
-        if(b[key]!==a[key]) return b[key]-a[key];
-        if(b.streak!==a.streak) return b.streak-a.streak;
-        return a.name.localeCompare(b.name);
-      });
-      document.getElementById('leaderboard').innerHTML = sorted.map((p,i)=>playerCard(p,i)).join('');
-    }
-
-    function renderRecentRounds(rounds, playersById){
-      const list = document.getElementById('recentRounds');
-      const last = rounds.slice(-10).reverse();
-      list.innerHTML = last.map(r=>{
-        const entries = Object.entries(r.scores)
-          .filter(([pid,pts])=>pts>0)
-          .sort((a,b)=>b[1]-a[1])
-          .map(([pid,pts])=>{
-            const name = playersById[pid]?.name || pid;
-            return `<span class="inline-flex items-center gap-1 bg-black/5 rounded-lg px-2 py-1">${name}<b>+${pts}</b></span>`;
-          }).join(' ');
-        const title = r.title || 'Riddle';
-        return `<li class="bg-white/80 rounded-2xl p-4 border border-black/5">
-          <div class="flex items-center justify-between">
-            <div class="font-semibold">${fmt.format(new Date(r.date))} · ${title}</div>
-            ${r.link ? `<a href="${r.link}" target="_blank" class="text-sm underline">See riddle</a>`:''}
-          </div>
-          <div class="mt-3 text-sm flex flex-wrap gap-2">${entries || '<span class="opacity-60">No solves recorded</span>'}</div>
-        </li>`;
-      }).join('');
-    }
-
-    function renderHallOfFame(players){
-      const hof = [...players].sort((a,b)=> (b.crowns||0)-(a.crowns||0)).slice(0,5);
-      const list = document.getElementById('hallOfFame');
-      list.innerHTML = hof.map(p=>`
-        <li class="flex items-center gap-3">
-          <img src="${p.avatar || 'img/players/_placeholder.png'}" alt="${p.name}" class="w-8 h-8 rounded-xl object-cover" onerror="this.onerror=null;this.src='img/players/_placeholder.png'"/>
-          <span class="text-sm">${p.name}</span>
-          <span class="ml-auto text-sm">👑 ${p.crowns||0}</span>
-        </li>
-      `).join('');
-    }
-
-    function setupTabs(totals){
-      const tabs = document.querySelectorAll('.tab-btn');
-      tabs.forEach(btn=>{
-        btn.addEventListener('click', e=>{
-          tabs.forEach(x=>x.setAttribute('aria-selected','false'));
-          btn.setAttribute('aria-selected','true');
-          renderLeaderboard(totals, btn.dataset.view);
-        });
-      });
-    }
-
-    function setupSeasons(rounds){
-      const seasons = [...new Set(rounds.map(r=>r.season))].sort();
-      const sel = document.getElementById('seasonSelect');
-      sel.innerHTML = ['All', ...seasons].map(s=>`<option value="${s==='All'?'':s}">${s}</option>`).join('');
-      return sel;
-    }
-
-    // --- Boot ---------------------------------------------------------------
-    (async function(){
-      try{
-        const [players, rounds, config] = await Promise.all([
-          loadJSON(paths.players),
-          loadJSON(paths.rounds),
-          loadJSON(paths.config).catch(()=>({repoUrl:'#'}))
-        ]);
-
-        }catch(err){
-        console.error(err);
-        const msg = document.createElement('div');
-        msg.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 bg-red-600 text-white px-4 py-2 rounded-xl text-sm shadow-lg';
-        msg.textContent = err.message;
-        document.body.appendChild(msg);
-      }</div>`);
+      function refresh(){
+        const season = seasonSel.value || null;
+        const { totals } = computeTotals(players, rounds, season);
+        const selectedTab = document.querySelector('.tab-btn[aria-selected="true"]');
+        const view = selectedTab ? selectedTab.dataset.view : 'today';
+        renderLeaderboard(totals, view);
+        renderRecentRounds(season ? rounds.filter(r=>r.season===season) : rounds, playersById);
+        renderHallOfFame(totals);
       }
-    })();
-  </script>
+
+      setupTabs(computeTotals(players, rounds).totals);
+      seasonSel.addEventListener('change', refresh);
+      refresh();
+
+      // ----- Rules modal wiring -----
+      const rulesBtn   = document.getElementById('rulesBtn');
+      const rulesModal = document.getElementById('rulesModal');
+      const rulesClose = document.getElementById('rulesClose');
+      const rulesOk    = document.getElementById('rulesOk');
+      const openRules  = ()=> rulesModal.classList.remove('hidden');
+      const closeRules = ()=> rulesModal.classList.add('hidden');
+      if (rulesBtn && rulesModal){
+        rulesBtn.addEventListener('click', openRules);
+        if (rulesClose) rulesClose.addEventListener('click', closeRules);
+        if (rulesOk)    rulesOk.addEventListener('click', closeRules);
+        rulesModal.addEventListener('click', e=>{ if (e.target === rulesModal) closeRules(); });
+        document.addEventListener('keydown', e=>{ if (e.key === 'Escape') closeRules(); });
+      }
+    } catch(err){
+      console.error(err);
+      const msg = document.createElement('div');
+      msg.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 bg-red-600 text-white px-4 py-2 rounded-xl text-sm shadow-lg';
+      msg.textContent = err.message;
+      document.body.appendChild(msg);
+    }
+  })();
+</script>
 </body>
 </html>
 
