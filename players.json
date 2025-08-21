@@ -1,0 +1,8 @@
+[
+  { "id": "AlexanderO", "name": "Alexander Olkov", "avatar": "img/players/Alexander.png", "team": "QA Engineer", "crowns": 0 },
+  { "id": "Martin", "name": "Martin", "avatar": "img/players/Martin.png", "team": "Support Bossman", "crowns": 0 },
+  { "id": "Mercy",  "name": "Mercy",  "avatar": "img/players/Mercy.png",  "team": "Support T2", "crowns": 0 },
+  { "id": "Orest", "name": "Orest", "avatar": "img/players/Orest.png", "team": "Support T2", "crowns": 0 },
+  { "id": "Preethi", "name": "Preethi", "avatar": "img/players/Preethi.png", "team": "Support", "crowns": 0 },
+  { "id": "Talita", "name": "Talita", "avatar": "img/players/Talita.png", "team": "Support", "crowns": 0 }
+]
