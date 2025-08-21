@@ -10,29 +10,46 @@
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400..900&family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-  :root{ /* …your variables… */ }
-  body{ /* … */ }
-  .riddle-title{ /* … */ }
-  .engrave{ /* … */ }
-  .scroll{ /* … */ }
-  .avatar{ /* … */ }
-  .medal{ /* … */ }
-  .tab-btn[aria-selected="true"]{ /* … */ }
-  .ring-theme{ /* … */ }
-  .footer-mascot{ /* … */ }
+  :root{
+    --parchment:#f5f8ff; --ink:#0f172a; --accent:#1f8dff; --gold:#b88900;
+    --page-start:#eaf3ff; --page-end:#f5f8ff;
+    --card-start:#f5faff; --card-end:#eaf3ff;
+  }
 
-  /* Scrollbar styling */
-  /* Chrome/Edge/Safari */
+  body{
+    background: radial-gradient(1200px 800px at 10% 10%, var(--page-start), var(--page-end)) fixed;
+    color: var(--ink);
+  }
+  .riddle-title{ font-family:Cinzel, serif; letter-spacing:.02em; }
+  .engrave{ text-shadow:0 1px 0 #fff, 0 -1px 0 rgba(0,0,0,.1); }
+  .scroll{
+    background: linear-gradient(var(--card-start), var(--card-end));
+    box-shadow: inset 0 0 0 2px rgba(0,0,0,.05), 0 10px 25px rgba(0,0,0,.08);
+    border-radius:22px;
+  }
+  .avatar{ box-shadow:0 2px 8px rgba(0,0,0,.08); }
+  .medal{ filter: drop-shadow(0 3px 6px rgba(0,0,0,.2)); }
+  .tab-btn[aria-selected="true"]{ background:var(--ink); color:#fff; }
+  .ring-theme{ box-shadow:0 0 0 3px rgba(31,141,255,.25); }
+
+  /* Footer mascot */
+  .footer-mascot{
+    position:absolute; bottom:.5rem; right:1rem;
+    width:var(--mascot-size,72px); height:auto;
+    filter:drop-shadow(0 8px 18px rgba(0,0,0,.25));
+    pointer-events:none; display:none;
+  }
+
+  /* Hall of Fame scrollbar — Chrome/Edge/Safari */
   #hallOfFame::-webkit-scrollbar{ width:8px; }
   #hallOfFame::-webkit-scrollbar-thumb{
-    background: rgba(15,23,42,.2);
-    border-radius: 9999px;
+    background: rgba(15,23,42,.2); border-radius:9999px;
   }
   #hallOfFame:hover::-webkit-scrollbar-thumb{
     background: rgba(15,23,42,.35);
   }
 
-  /* Firefox */
+  /* Hall of Fame scrollbar — Firefox */
   #hallOfFame{
     scrollbar-width: thin;
     scrollbar-color: rgba(15,23,42,.35) transparent;
