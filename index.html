@@ -110,9 +110,6 @@
   const fmt = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' });
   let HOF_LIMIT = Infinity;   // show all by default (config can override)
 
-  const fmt = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' });
-  let HOF_LIMIT = Infinity; // default = show everyone
-
   async function loadJSON(url){
     const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) throw new Error(`Failed to load ${url} (${res.status})`);
@@ -274,8 +271,6 @@
 
     // pick up optional cap from config.json
     HOF_LIMIT = Number.isFinite(config?.hofLimit) ? config.hofLimit : Infinity;
-
-    // ...rest of your boot code...
 
       // repo link
       const repoLink = document.getElementById('repoLink');
