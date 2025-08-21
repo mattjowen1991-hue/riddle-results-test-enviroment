@@ -11,26 +11,45 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
   :root{
-    --parchment:#f5f8ff; --ink:#0f172a; --accent:#1f8dff; --gold:#b88900;
-    --page-start:#eaf3ff; --page-end:#f5f8ff;
-    --card-start:#f5faff; --card-end:#eaf3ff;
+    --ink:#0f172a;
+    --accent:#0000ff;             /* Hubstaff blue */
+    --page-end:#f7f9ff;           /* page base */
+    --page-glow:rgba(0,0,255,.06);/* subtle blue glow */
+    --card-start:#ffffff;
+    --card-end:#f0f4ff;           /* very light blue */
   }
 
+  /* Page & typography */
   body{
-    background: radial-gradient(1200px 800px at 10% 10%, var(--page-start), var(--page-end)) fixed;
-    color: var(--ink);
+    background: radial-gradient(1200px 800px at 10% 10%, var(--page-glow), var(--page-end)) fixed;
+    color:var(--ink);
   }
   .riddle-title{ font-family:Cinzel, serif; letter-spacing:.02em; }
-  .engrave{ text-shadow:0 1px 0 #fff, 0 -1px 0 rgba(0,0,0,.1); }
+  .engrave{ text-shadow:0 1px 0 #fff, 0 -1px 0 rgba(0,0,0,.08); }
+
+  /* Cards */
   .scroll{
     background: linear-gradient(var(--card-start), var(--card-end));
-    box-shadow: inset 0 0 0 2px rgba(0,0,0,.05), 0 10px 25px rgba(0,0,0,.08);
     border-radius:22px;
+    border:1px solid rgba(0,0,255,.12);
+    box-shadow:
+      inset 0 0 0 2px rgba(0,0,0,.03),
+      0 10px 25px rgba(0,0,0,.08),
+      0 0 0 3px rgba(0,0,255,.05);
   }
+
+  /* Avatars / medals */
   .avatar{ box-shadow:0 2px 8px rgba(0,0,0,.08); }
-  .medal{ filter: drop-shadow(0 3px 6px rgba(0,0,0,.2)); }
-  .tab-btn[aria-selected="true"]{ background:var(--ink); color:#fff; }
-  .ring-theme{ box-shadow:0 0 0 3px rgba(31,141,255,.25); }
+  .medal{ filter:drop-shadow(0 3px 6px rgba(0,0,0,.2)); }
+
+  /* Tabs & pills */
+  .tab-btn{ transition:all .15s ease; }
+  .tab-btn[aria-selected="true"]{
+    background:var(--accent); color:#fff;
+    box-shadow:0 0 0 3px rgba(0,0,255,.18);
+  }
+  .tab-btn[aria-selected="false"]:hover{ background:rgba(0,0,255,.08); }
+  .ring-theme{ box-shadow:0 0 0 3px rgba(0,0,255,.25); }
 
   /* Footer mascot */
   .footer-mascot{
@@ -40,20 +59,19 @@
     pointer-events:none; display:none;
   }
 
-  /* Hall of Fame scrollbar — Chrome/Edge/Safari */
-  #hallOfFame::-webkit-scrollbar{ width:8px; }
+  /* Hall of Fame scrollbar — webkit */
+  #hallOfFame::-webkit-scrollbar{ width:8px }
   #hallOfFame::-webkit-scrollbar-thumb{
-    background: rgba(15,23,42,.2); border-radius:9999px;
+    background:rgba(0,0,255,.22); border-radius:9999px
   }
-  #hallOfFame:hover::-webkit-scrollbar-thumb{
-    background: rgba(15,23,42,.35);
-  }
+  #hallOfFame:hover::-webkit-scrollbar-thumb{ background:rgba(0,0,255,.35) }
+  /* Firefox */
+  #hallOfFame{ scrollbar-width:thin; scrollbar-color:rgba(0,0,255,.35) transparent; }
 
-  /* Hall of Fame scrollbar — Firefox */
-  #hallOfFame{
-    scrollbar-width: thin;
-    scrollbar-color: rgba(15,23,42,.35) transparent;
-  }
+  /* Hubstaff-blue links */
+a { color: var(--accent); text-decoration-color: rgba(0,0,255,.4); }
+a:hover { text-decoration-color: rgba(0,0,255,.8); }
+
 </style>
 </head>
 <body class="min-h-screen">
@@ -188,34 +206,39 @@
 
   // one-number card, with 🔥 only on Daily and 👑 always visible
   function playerCard(p, rank, view){
-    const m = medal(rank);
-    const label = view==='today' ? 'Daily' : view==='last7' ? 'Weekly' : 'All Time';
-    const value = view==='today' ? p.today : view==='last7' ? p.last7 : p.total;
-    const showFire = view==='today';
+  const m = medal(rank);
+  const label = view==='today' ? 'Daily' : view==='last7' ? 'Weekly' : 'All Time';
+  const value = view==='today' ? p.today : view==='last7' ? p.last7 : p.total;
+  const showFire = view==='today'; // 🔥 only on Daily
 
-    return `
-      <article class="relative bg-white/80 backdrop-blur rounded-2xl p-5 border border-black/5 hover:translate-y-[-2px] transition">
-        ${m ? `<div class="absolute -top-4 -right-3 bg-gradient-to-b ${m.color} text-xl rounded-full w-12 h-12 grid place-items-center" title="${m.name}">${m.emoji}</div>`:''}
-        <div class="flex items-center gap-4">
-          <img src="${p.avatar || 'img/players/_placeholder.png'}" alt="${p.name}"
-               class="avatar w-14 h-14 rounded-2xl object-cover"
-               onerror="this.onerror=null;this.src='img/players/_placeholder.png'"/>
-          <div class="flex-1 min-w-0">
-            <h4 class="font-extrabold text-lg truncate">${p.name}</h4>
-            <div class="mt-1 flex flex-wrap gap-2 text-xs">
-              ${showFire ? `<span class="inline-flex items-center gap-1 bg-black/5 px-2 py-1 rounded-lg" title="Daily win streak (resets when you miss a day)">🔥 ${p.streak}</span>` : ''}
-              <span class="inline-flex items-center gap-1 bg-black/5 px-2 py-1 rounded-lg" title="Season crowns (awarded to top scorer each 4-week season)">👑 ${p.crowns || 0}</span>
-            </div>
+  return `
+    <article class="relative bg-white/80 backdrop-blur rounded-2xl p-5 border border-black/5 hover:translate-y-[-2px] transition">
+      ${m ? `<div class="absolute -top-4 -right-3 bg-gradient-to-b ${m.color} text-xl rounded-full w-12 h-12 grid place-items-center" title="${m.name}">${m.emoji}</div>` : ''}
+
+      <div class="flex items-center gap-4">
+        <img src="${p.avatar || 'img/players/_placeholder.png'}" alt="${p.name}"
+             class="avatar w-14 h-14 rounded-2xl object-cover"
+             onerror="this.onerror=null;this.src='img/players/_placeholder.png'"/>
+        <div class="flex-1 min-w-0">
+          <h4 class="font-extrabold text-lg truncate">${p.name}</h4>
+
+          <!-- blue chips -->
+          <div class="mt-1 flex flex-wrap gap-2 text-xs">
+            ${showFire ? `<span class="inline-flex items-center gap-1 bg-blue-50 px-2 py-1 rounded-lg" title="Daily win streak (resets when you miss a day)">🔥 ${p.streak}</span>` : ''}
+            <span class="inline-flex items-center gap-1 bg-blue-50 px-2 py-1 rounded-lg" title="Season crowns (awarded to top scorer each 4-week season)">👑 ${p.crowns || 0}</span>
           </div>
         </div>
-        <div class="mt-4 grid grid-cols-1 gap-2 text-center">
-          <div class="rounded-xl bg-sky-50 py-3">
-            <div class="text-xs opacity-70">${label}</div>
-            <div class="text-2xl font-extrabold">${value}</div>
-          </div>
+      </div>
+
+      <!-- blue stat tile -->
+      <div class="mt-4 grid grid-cols-1 gap-2 text-center">
+        <div class="rounded-xl bg-blue-50 py-3">
+          <div class="text-xs opacity-70">${label}</div>
+          <div class="text-2xl font-extrabold">${value}</div>
         </div>
-      </article>`;
-  }
+      </div>
+    </article>`;
+}
 
   function renderLeaderboard(totals, view){
     const key = view==='last7' ? 'last7' : view==='today' ? 'today' : 'total';
