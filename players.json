@@ -4,5 +4,8 @@
   { "id": "Mercy",  "name": "Mercy",  "avatar": "img/players/Mercy.png",  "team": "Support T2", "crowns": 0 },
   { "id": "Orest", "name": "Orest", "avatar": "img/players/Orest.png", "team": "Support T2", "crowns": 0 },
   { "id": "Preethi", "name": "Preethi", "avatar": "img/players/Preethi.png", "team": "Support", "crowns": 0 },
-  { "id": "Talita", "name": "Talita", "avatar": "img/players/Talita.png", "team": "Support", "crowns": 0 }
+  { "id": "Talita", "name": "Talita", "avatar": "img/players/Talita.png", "team": "Support", "crowns": 0 },
+  { "id": "Aurora", "name": "Aurora", "avatar": "img/players/Aurora.png", "team": "Success", "crowns": 0 },
+  { "id": "Jean", "name": "Jean", "avatar": "img/players/Jean.png", "team": "Support Expert", "crowns": 0 },
+  { "id": "Laura", "name": "Laura", "avatar": "img/players/Laura.png", "team": "Success", "crowns": 0 }
 ]
