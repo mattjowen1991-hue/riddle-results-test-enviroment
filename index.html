@@ -263,11 +263,14 @@
   // ---------- Boot ----------
 (async () => {
   try {
+    const v = `?v=${Date.now()}`; // cache-buster per page load
     const [players, rounds, config] = await Promise.all([
-      loadJSON(paths.players),
-      loadJSON(paths.rounds),
-      loadJSON(paths.config).catch(() => ({}))
+      loadJSON(paths.players + v),
+      loadJSON(paths.rounds  + v),
+      loadJSON(paths.config  + v).catch(() => ({}))
     ]);
+
+    HOF_LIMIT = Number.isFinite(config?.hofLimit) ? config.hofLimit : Infinity;
 
     // pick up optional cap from config.json
     HOF_LIMIT = Number.isFinite(config?.hofLimit) ? config.hofLimit : Infinity;
