@@ -75,7 +75,7 @@
       </div>
       <aside class="scroll p-6 sm:p-8">
         <h3 class="riddle-title text-xl sm:text-2xl font-extrabold">Hall of Fame</h3>
-        <ul id="hallOfFame" class="mt-4 space-y-3"></ul>
+        <ul id="hallOfFame" class="mt-4 space-y-3 max-h-96 overflow-auto pr-1"></ul>
         
       </aside>
     </section>
@@ -108,6 +108,8 @@
   // ---------- Data helpers ----------
   const paths = { players: 'players.json', rounds: 'rounds.json', config: 'config.json' };
   const fmt = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' });
+  let HOF_LIMIT = Infinity;   // show all by default (config can override)
+
 
   async function loadJSON(url){
     const res = await fetch(url, { cache: 'no-store' });
@@ -225,18 +227,20 @@
   }
 
   function renderHallOfFame(players){
-    const hof = [...players].sort((a,b)=> (b.crowns||0)-(a.crowns||0)).slice(0,5);
-    const list = document.getElementById('hallOfFame');
-    list.innerHTML = hof.map(p=>`
-      <li class="flex items-center gap-3">
-        <img src="${p.avatar || 'img/players/_placeholder.png'}" alt="${p.name}"
-             class="w-8 h-8 rounded-xl object-cover"
-             onerror="this.onerror=null;this.src='img/players/_placeholder.png'"/>
-        <span class="text-sm">${p.name}</span>
-        <span class="ml-auto text-sm">👑 ${p.crowns||0}</span>
-      </li>
-    `).join('');
-  }
+  const list = document.getElementById('hallOfFame');
+  const sorted = [...players]
+    .sort((a,b)=> (b.crowns||0)-(a.crowns||0) || a.name.localeCompare(b.name));
+
+  list.innerHTML = sorted.map(p=>`
+    <li class="flex items-center gap-3">
+      <img src="${p.avatar || 'img/players/_placeholder.png'}"
+           alt="${p.name}" class="w-8 h-8 rounded-xl object-cover"
+           onerror="this.onerror=null;this.src='img/players/_placeholder.png'"/>
+      <span class="text-sm">${p.name}</span>
+      <span class="ml-auto text-sm">👑 ${p.crowns||0}</span>
+    </li>
+  `).join('');
+}
 
   function setupTabs(totals){
     const tabs = document.querySelectorAll('.tab-btn');
