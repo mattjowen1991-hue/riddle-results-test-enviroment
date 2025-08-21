@@ -1,0 +1,21 @@
+name: Validate JSON
+on:
+  pull_request:
+    paths:
+      - "players.json"
+      - "rounds.json"
+      - "config.json"
+jobs:
+  parse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Validate players.json
+        run: node -e "JSON.parse(require('fs').readFileSync('players.json','utf8'))"
+      - name: Validate rounds.json
+        run: node -e "JSON.parse(require('fs').readFileSync('rounds.json','utf8'))"
+      - name: Validate config.json
+        run: node -e "JSON.parse(require('fs').readFileSync('config.json','utf8'))"
