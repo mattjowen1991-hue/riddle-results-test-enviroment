@@ -54,10 +54,10 @@
       <div class="flex items-center justify-between">
         <h2 class="riddle-title text-2xl sm:text-3xl font-extrabold">The Leaderboard</h2>
         <div class="flex gap-2" role="tablist" aria-label="Leaderboard views">
-          <button class="tab-btn px-3 py-1.5 rounded-lg text-sm font-semibold" data-view="overall" aria-selected="true">Overall</button>
-          <button class="tab-btn px-3 py-1.5 rounded-lg text-sm font-semibold" data-view="last7">Last 7 days</button>
-          <button class="tab-btn px-3 py-1.5 rounded-lg text-sm font-semibold" data-view="today">Today</button>
-        </div>
+  <button class="tab-btn px-3 py-1.5 rounded-lg text-sm font-semibold" data-view="today" aria-selected="true">Daily</button>
+  <button class="tab-btn px-3 py-1.5 rounded-lg text-sm font-semibold" data-view="last7" aria-selected="false">Weekly</button>
+  <button class="tab-btn px-3 py-1.5 rounded-lg text-sm font-semibold" data-view="total" aria-selected="false">All Time</button>
+</div>
       </div>
 
       <div id="leaderboard" class="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
